@@ -440,8 +440,8 @@ function savePhrases(){
 async function importFiles(files){
   const list=[...files]; if(!list.length) return;
   busy(true); const groups=[], errs=[];
-  for(const f of list){
-    try{ const p=await parseFile(f); if(!p.items.length) throw new Error('품목을 찾지 못했습니다'); groups.push({fname:f.name, 출처:p.출처, items:p.items.map(x=>({...x,선택:true})), ship:p.ship||0, shipNote:p.shipNote||'', addShip:false}); }
+  for(const f of list){   // 배송비가 잡힌 파일은 '배송비도 품목에 추가'를 기본으로 켜 둔다
+    try{ const p=await parseFile(f); if(!p.items.length) throw new Error('품목을 찾지 못했습니다'); groups.push({fname:f.name, 출처:p.출처, items:p.items.map(x=>({...x,선택:true})), ship:p.ship||0, shipNote:p.shipNote||'', addShip:!!p.ship}); }
     catch(e){ errs.push(`${f.name}: ${e.message}`); }
   }
   busy(false);
@@ -455,7 +455,7 @@ function openQuote(groups){
   $('qmReplace').checked = !itemsFilled().length;
   $('qmTable').querySelector('tbody').innerHTML = groups.map((g,gi)=>`<tr class="grp"><td colspan="7">
       <b>${esc(g.출처)}</b> · ${esc(g.fname)} · ${g.items.length}건
-      ${g.ship?`<label class="row" style="display:inline-flex;gap:6px;margin-left:12px;cursor:pointer;font-weight:400"><input type="checkbox" onchange="qGroups[${gi}].addShip=this.checked"> 배송비 ${won(g.ship)}원도 품목에 추가</label>`:''}
+      ${g.ship?`<label class="row" style="display:inline-flex;gap:6px;margin-left:12px;cursor:pointer;font-weight:400"><input type="checkbox" ${g.addShip?'checked':''} onchange="qGroups[${gi}].addShip=this.checked"> 배송비 ${won(g.ship)}원도 품목에 추가</label>`:''}
       ${g.shipNote?`<span class="hint" style="display:inline;margin-left:8px">${esc(g.shipNote)}</span>`:''}</td></tr>`
     + g.items.map((q,i)=>`<tr ${q._mismatch?'class="warn"':''}>
       <td><input type="checkbox" checked onchange="qGroups[${gi}].items[${i}].선택=this.checked"></td>
