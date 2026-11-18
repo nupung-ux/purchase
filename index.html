@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base target="_top">
+<title>품의 작성기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2230; --ink-2:#4b5563; --ink-3:#8a94a6;
+    --paper:#f5f6f8; --panel:#ffffff; --line:#d9dee7; --line-2:#eef1f5;
+    --navy:#24427a; --navy-2:#1a3160; --navy-tint:#e9eef8;
+    --warn:#b45309; --warn-tint:#fff4e5; --danger:#b91c1c;
+    --r:6px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.55}
+  button,input,select,textarea{font:inherit;color:inherit}
+  h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
+  h1{font-size:22px} h2{font-size:18px} h3{font-size:15px}
+
+  .top{background:var(--panel);border-bottom:1px solid var(--line)}
+  .top .in{max-width:960px;margin:0 auto;padding:14px 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .top .school{font-size:17px;font-weight:700}
+  .top .year{color:var(--ink-3);font-size:14px}
+  .top .crumb{margin-left:auto;font-size:14px}
+  .top .crumb button{background:none;border:0;padding:0;color:var(--navy);cursor:pointer;text-decoration:underline}
+
+  .wrap{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
+  .panel+.panel{margin-top:16px}
+  .step-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .step-head .num{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .step-head .hint{margin:0 0 0 auto}
+
+  /* 파일 놓는 곳 */
+  .drop{border:2px dashed var(--line);border-radius:8px;padding:26px 20px;text-align:center;cursor:pointer;background:#fff;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--navy);background:var(--navy-tint)}
+  .drop .t{font-size:17px;font-weight:600}
+  .drop .s{color:var(--ink-3);font-size:14px;margin-top:4px}
+  .malls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px}
+  .malls span{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px;background:#fff;color:var(--ink-2)}
+  details.how{margin-top:12px;font-size:14px;color:var(--ink-2)}
+  details.how summary{cursor:pointer;color:var(--navy)}
+  details.how ul{margin:8px 0 0;padding-left:18px}
+  details.how li{margin:3px 0}
+
+  /* 폼 요소 */
+  label.f{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+  input[type=text],select,textarea{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:#fff;min-width:0}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--navy);outline-offset:0;border-color:var(--navy)}
+  textarea{width:100%;min-height:150px;resize:vertical;line-height:1.5}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:var(--r);padding:8px 14px;cursor:pointer}
+  .btn:hover{background:var(--line-2)}
+  .btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+  .btn.primary:hover{background:var(--navy-2)}
+  .btn.small{padding:4px 10px;font-size:13px}
+  .btn.text{border:0;background:none;color:var(--navy);padding:4px 6px}
+  .btn.text.danger{color:var(--danger)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2);flex-wrap:wrap}
+  .hint{font-size:13px;color:var(--ink-3);margin-top:6px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .sect{margin-top:18px}
+  .sect>label.f{font-weight:700;font-size:15px;color:var(--ink)}
+
+  /* 표 */
+  table.edit{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  table.edit th{background:var(--line-2);font-weight:600;color:var(--ink-2);padding:8px 6px;text-align:left;font-size:13px;border-bottom:1px solid var(--line)}
+  table.edit td{padding:4px 4px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+  table.edit input[type=text]{width:100%;padding:6px 8px}
+  table.edit td.num input{text-align:right}
+  table.edit td.num{text-align:right;white-space:nowrap}
+  table.edit tr.tot td{font-weight:600;border-top:2px solid var(--line)}
+  table.edit tr.grp td{background:var(--line-2);font-size:13px;padding:8px 6px}
+  table.edit tr.grp b{color:var(--navy)}
+  table.edit tr.warn td{background:var(--warn-tint)}
+  .amt{font-variant-numeric:tabular-nums}
+  .empty{color:var(--ink-3);padding:12px 0;font-size:14px}
+  .bysup{font-size:13px;color:var(--ink-2);margin-top:8px}
+  .bysup span{display:inline-block;margin-right:14px}
+
+  /* 자리표시 버튼 */
+  .ph-bar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;align-items:center}
+  .ph-bar .lb{font-size:12px;color:var(--ink-3);margin-right:2px}
+  .ph-bar button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;font-size:13px;cursor:pointer;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--navy)}
+  .ph-bar button:hover{background:var(--navy-tint);border-color:var(--navy)}
+  .phrase{border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px}
+  .phrase .head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .phrase .head input{flex:1;max-width:260px}
+  .phrase textarea{min-height:110px}
+
+  /* 모달·알림 */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,26,40,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+  .modal-bg.on{display:flex}
+  .modal{background:#fff;border-radius:8px;width:100%;max-width:860px;padding:22px 24px;max-height:92vh;overflow:auto}
+  .modal h3{margin-bottom:6px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r);font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+  .toast.on{opacity:1}
+  .toast.err{background:var(--danger)}
+  .busy{position:fixed;top:0;left:0;right:0;height:3px;background:var(--navy);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+  .busy.on{transform:scaleX(.7)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:640px){.panel{padding:16px 14px}.step-head .hint{margin-left:0;width:100%}}
+</style>
+</head>
+<body>
+<div class="busy" id="busy"></div>
+
+<div class="top"><div class="in">
+  <span class="school">품의 작성기</span>
+  <span class="year">쇼핑몰 견적서로 에듀파인 품의 만들기</span>
+  <span class="crumb"><span id="autosave" style="color:var(--ink-3);margin-right:14px"></span><button onclick="resetAll()">새로 시작</button></span>
+</div></div>
+
+<div class="wrap">
+
+  <!-- ───────── 1. 품목 가져오기 ───────── -->
+  <section class="panel">
+    <div class="step-head"><span class="num">1</span><h2>품목 가져오기</h2></div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="견적서 파일 선택">
+      <div class="t">견적서 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
+      <div class="s">여러 파일을 한 번에 넣을 수 있고, 넣을 때마다 아래 표에 더해집니다</div>
+      <div class="malls"><span>지마켓</span><span>아이스크림몰</span><span>학교장터(S2B)</span><span>아람과학사</span><span>이마트몰</span><span>yes24</span><span>키드키즈몰</span><span>에듀파인 품목내역 양식(xlsx)</span></div>
+    </div>
+    <input type="file" id="qFile" multiple accept=".xls,.xlsx,.htm,.html,.pdf" style="display:none">
+    <details class="how">
+      <summary>쇼핑몰별로 어떤 파일을 넣으면 되나요?</summary>
+      <ul>
+        <li>지마켓·아이스크림몰·아람과학사: 견적서 내려받기로 받은 엑셀 파일(.xls)</li>
+        <li>학교장터(S2B): 견적서를 엑셀(.xlsx)로 받은 파일</li>
+        <li>yes24: 견적서 엑셀(.xlsx) 또는 에듀파인 견적 양식(.xlsx), 둘 다 됩니다</li>
+        <li>이마트몰: 장바구니 견적서 화면을 인쇄 → PDF로 저장한 파일(.pdf)</li>
+        <li>키드키즈몰: 견적서로 내려받은 엑셀 파일(.xls)</li>
+        <li>그 밖의 쇼핑몰: 아래 표에 직접 입력하거나, 엑셀에 정리한 뒤 복사해서 표에 붙여넣으세요(내용·규격·단위·수량·예상단가·구매처 순)</li>
+      </ul>
+    </details>
+  </section>
+
+  <!-- ───────── 2. 품목 확인 ───────── -->
+  <section class="panel">
+    <div class="step-head"><span class="num">2</span><h2>품목 확인</h2><span class="hint">합계는 수량 × 예상단가로 자동 계산됩니다</span></div>
+    <div style="overflow-x:auto"><table class="edit" id="iTable"><thead><tr>
+      <th style="width:30px"><input type="checkbox" onchange="iSelAll(this.checked)" title="전체 선택"></th><th>내용 <span style="color:var(--danger)">*</span></th><th style="width:16%">규격</th><th style="width:7%">단위</th><th style="width:7%">수량 <span style="color:var(--danger)">*</span></th><th style="width:11%">예상단가 <span style="color:var(--danger)">*</span></th><th style="width:11%">합계</th><th style="width:12%">구매처</th><th style="width:32px"></th>
+    </tr></thead><tbody></tbody><tfoot><tr class="tot"><td colspan="6" style="text-align:right">품목 합계</td><td class="num amt" id="iTotal">0</td><td colspan="2"></td></tr></tfoot></table></div>
+    <div class="bysup" id="bySup"></div>
+    <div class="row" style="margin-top:10px;justify-content:space-between">
+      <span class="row"><button class="btn small" onclick="addItemRow()">행 추가</button><button class="btn small" onclick="$('qFile').click()">견적서 추가</button></span>
+      <span class="row"><button class="btn small" onclick="deleteItems('sel')">선택 삭제</button><button class="btn small" onclick="deleteItems('all')">전체 삭제</button></span>
+    </div>
+  </section>
+
+  <!-- ───────── 3. 품의서 ───────── -->
+  <section class="panel">
+    <div class="step-head"><span class="num">3</span><h2>품의서</h2><span class="hint">제목과 개요는 복사해서 에듀파인에 붙여 넣고, 품목은 xlsx로 내려받아 업로드하세요</span></div>
+
+    <div class="sect" style="margin-top:6px"><label class="f">품의 제목</label>
+      <div class="row"><input type="text" id="pTitle" style="flex:1;min-width:240px" placeholder="예: 4학년 과학 실험 물품 구입" oninput="titleTouched()"><button class="btn" onclick="copyText($('pTitle').value.trim(),'제목')">복사</button></div>
+      <div class="row" style="margin-top:6px;font-size:14px"><span style="white-space:nowrap">자주 쓰는 제목</span><select id="tSel" style="flex:1;min-width:200px" onchange="pickTitle()"></select><button class="btn small" onclick="saveTitle()" title="지금 입력한 제목을 목록에 저장">현재 제목 저장</button><button class="btn text danger small" onclick="removeTitle()">선택 삭제</button></div>
+      <div class="hint">제목에 {용도}를 넣어 두면 아래 용도가 자동으로 채워집니다. 저장한 제목은 이 브라우저에만 남습니다.</div>
+    </div>
+
+    <div class="sect"><label class="f">품의 개요</label>
+      <div class="row" style="align-items:flex-end;margin:4px 0 8px">
+        <span><label class="f">용도 <span class="hint" style="margin:0;display:inline">({용도} 자리에 들어감)</span></label><input type="text" id="gUse" style="width:220px" placeholder="예: 과학 실험" oninput="useChanged()"></span>
+        <span><label class="f">문구</label><span class="row"><select id="gPhrase" style="min-width:180px" onchange="genBody(true)"></select><button class="btn small" onclick="openPhrases()">문구 관리</button></span></span>
+      </div>
+      <textarea id="gBody" style="min-height:190px"></textarea>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" onclick="copyText($('gBody').value,'품의 개요')">개요 복사</button>
+        <button class="btn" onclick="genBody(true)">다시 생성</button>
+        <span style="flex:1"></span>
+        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><button class="btn primary" onclick="downloadItemsXlsx()">품목내역 xlsx 다운로드</button><span class="hint" style="margin:0">에듀파인 품의에 업로드하면 물품이 자동 등록됩니다</span></span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 견적서 미리보기 -->
+<div class="modal-bg" id="qModal"><div class="modal">
+  <h3>견적서 가져오기</h3>
+  <div class="hint" id="qmInfo"></div>
+  <div style="overflow-x:auto;max-height:55vh;overflow-y:auto"><table class="edit" id="qmTable"><thead><tr><th style="width:36px"></th><th>내용</th><th style="width:20%">규격</th><th style="width:8%">단위</th><th style="width:8%">수량</th><th style="width:13%">예상단가</th><th style="width:14%">구매처</th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="margin-top:10px"><label class="row" style="cursor:pointer;gap:6px"><input type="checkbox" id="qmReplace"> 기존 품목을 지우고 넣기</label></div>
+  <div class="actions"><button class="btn" onclick="$('qModal').classList.remove('on')">취소</button><button class="btn primary" onclick="applyQuote()">품목에 추가</button></div>
+</div></div>
+
+<!-- 문구 관리 -->
+<div class="modal-bg" id="phModal"><div class="modal" style="max-width:720px">
+  <h3>품의 개요 문구</h3>
+  <div class="hint">문구 안의 { } 자리는 품목과 용도에 맞춰 자동으로 채워집니다. 문구는 이 브라우저에만 저장됩니다.</div>
+  <div id="phBar"></div>
+  <div id="phList"></div>
+  <div class="row" style="margin-top:10px"><button class="btn small" onclick="addPhrase()">문구 추가</button><button class="btn text small" onclick="restorePhrases()">기본 문구 되돌리기</button></div>
+  <div class="actions"><button class="btn" onclick="$('phModal').classList.remove('on')">취소</button><button class="btn primary" onclick="savePhrases()">저장</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ───────── 공용 ─────────
+const $ = id => document.getElementById(id);
+const won = n => Number(n||0).toLocaleString('ko-KR');
+const numOf = v => Number(String(v??'').replace(/[^0-9.]/g,''))||0;
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function busy(on){ $('busy').classList.toggle('on', on); }
+function toast(msg, err){ const t=$('toast'); t.textContent=msg; t.className='toast on'+(err?' err':''); clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast', err?8000:2600); }
+window.addEventListener('error', e=>toast('화면 오류: '+e.message, true));
+
+// 브라우저 저장 (문구·자주 쓰는 제목·작성 중인 내용)
+const store = {   // localStorage가 막혀 있으면 sessionStorage(탭 닫기 전까지)라도 쓴다
+  _s(){ try{ localStorage.setItem('pumui_t','1'); localStorage.removeItem('pumui_t'); return localStorage; }catch(e){ return sessionStorage; } },
+  get(k, d){ try{ const v=this._s().getItem('pumui_'+k); return v===null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ this._s().setItem('pumui_'+k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ this._s().removeItem('pumui_'+k); }catch(e){} },
+};
+const DEFAULT_PHRASES = [
+  { 이름:'물품', 본문템플릿:
+      '{용도} 관련 물품을 아래와 같이 구입하고자 합니다.\n' +
+      '1. 내역 : {산출내역}\n' +
+      '2. 소요예산 : {소요예산}\n\n' +
+      '붙임 견적서 1부. 끝.' },
+  { 이름:'업추비', 본문템플릿:
+      '{용도} 관련 협의회를 아래와 같이 실시하고자 합니다.\n' +
+      '1. 일시:\n2. 장소:\n3. 협의사항:\n4. 참석자:\n' +
+      '5. 소요예산: {소요예산}\n' +
+      '6. 산출내역: {단가}원 × {인원}명. 끝.' },
+];
+const PH = [
+  ['{용도}',    '위에 입력한 용도 → 예: 과학 실험'],
+  ['{소요예산}', '품목 합계 → 예: 45,760원'],
+  ['{산출내역}', '첫 품목 외 N건 → 예: 동화책 외 3건 (품목이 하나면 품목명만)'],
+  ['{품목표}',  '품목 전체를 줄별로 나열 → 내용(규격) 수량 × 단가 = 금액'],
+  ['{구매처}',  '구매처 목록 → 예: 지마켓, 아람과학사'],
+  ['{단가}',    '첫 품목의 예상단가 → 예: 5,000'],
+  ['{인원}',    '첫 품목의 수량 → 예: 12'],
+];
+let PHRASES = store.get('phrases', null) || DEFAULT_PHRASES.map(p=>({...p}));
+let TITLES  = store.get('titles', []);
+
+// ───────── 상태 ─────────
+let iDraft = [{}];      // 품목 표
+let qGroups = [];       // 견적서 미리보기(파일별)
+let phraseDraft = [];   // 문구 편집 중
+let lastField = null;   // 마지막으로 커서가 있던 입력칸
+document.addEventListener('focusin', e=>{ if(e.target.matches('input[type=text],textarea')) lastField=e.target; });
+
+// ───────── 시작 ─────────
+function init(){
+  const d=$('drop');
+  d.addEventListener('click', ()=>$('qFile').click());
+  d.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('qFile').click(); } });
+  // 파일은 페이지 어디에 떨어뜨려도 받는다 (브라우저가 파일을 열어 버리지 않게 기본 동작을 막음)
+  document.addEventListener('dragover', e=>{ if([...(e.dataTransfer?.types||[])].includes('Files')){ e.preventDefault(); d.classList.add('over'); } });
+  document.addEventListener('dragleave', e=>{ if(!e.relatedTarget) d.classList.remove('over'); });
+  document.addEventListener('drop', e=>{ e.preventDefault(); d.classList.remove('over'); if(e.dataTransfer?.files?.length) importFiles(e.dataTransfer.files); });
+  $('qFile').addEventListener('change', e=>{ importFiles(e.target.files); e.target.value=''; });
+  document.addEventListener('paste', e=>{ if(e.target.matches('input,textarea')) return; const fs=[...(e.clipboardData?.files||[])]; if(fs.length) importFiles(fs); });
+  const saved=restoreDraft();
+  renderItems(); renderTitles(); renderPhraseSelect();
+  if(saved){
+    const pi=PHRASES.findIndex(x=>x.이름===saved.phrase); if(pi>=0) $('gPhrase').value=String(pi);
+    if(saved.bodyAuto || !saved.body) genBody(true); else { $('gBody').value=saved.body; $('gBody')._auto=null; }
+    toast('작성하던 내용을 불러왔습니다. 처음부터 하려면 오른쪽 위 [새로 시작]을 누르세요');
+  } else genBody(true);
+  document.addEventListener('input', e=>{ if(e.target.closest('.wrap')) saveDraft(); });   // 표·제목·용도·개요에 입력하면 저장
+}
+function resetAll(){
+  if(!confirm('품목·제목·개요를 모두 지우고 새로 시작할까요? (저장한 문구와 제목은 남습니다)')) return;
+  store.del('draft'); $('autosave').textContent='';
+  iDraft=[{}]; $('pTitle').value=''; $('pTitle')._auto=''; $('gUse').value=''; $('gBody').value=''; $('gBody')._auto='';
+  renderItems(); genBody(true); window.scrollTo(0,0); toast('새로 시작합니다');
+}
+
+// ───────── 작성 중인 내용 자동 저장 (새로고침·탭 닫기 후에도 이어서) ─────────
+let saveT=null;
+function saveDraft(){
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{
+    const b=$('gBody'), p=$('pTitle');
+    const d={ items: itemsFilled().map(({_sel,...it})=>it), title:p.value, titleTpl:(p._tpl && p.value===p._auto)?p._tpl:null,
+      use:$('gUse').value, phrase:(PHRASES[Number($('gPhrase').value)]||{}).이름||'', body:b.value, bodyAuto:b._auto===b.value, at:Date.now() };
+    const empty = !d.items.length && !d.title && !d.use;
+    if(empty){ store.del('draft'); $('autosave').textContent=''; return; }
+    $('autosave').textContent = store.set('draft', d)
+      ? '자동 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'numeric',minute:'2-digit'})
+      : '자동 저장 안 됨 (브라우저가 저장을 막음)';
+  }, 300);
+}
+function restoreDraft(){
+  const d=store.get('draft', null);
+  if(!d || !((d.items&&d.items.length) || d.title || d.use)) return null;
+  iDraft = (d.items&&d.items.length) ? d.items : [{}];
+  const p=$('pTitle'); p.value=d.title||''; p._tpl=d.titleTpl||null; p._auto=p.value;
+  $('gUse').value=d.use||'';
+  return d;
+}
+
+// ───────── 품목 표 ─────────
+const I_COLS=['내용','규격','단위','수량','예상단가','구매처'];
+function renderItems(){
+  $('iTable').querySelector('tbody').innerHTML = iDraft.map((it,i)=>`<tr>
+    <td><input type="checkbox" ${it._sel?'checked':''} onchange="iDraft[${i}]._sel=this.checked"></td>
+    <td><input type="text" value="${esc(it.내용||'')}" oninput="iDraft[${i}].내용=this.value;itemsChanged()" onpaste="iPaste(event)"></td>
+    <td><input type="text" value="${esc(it.규격||'')}" oninput="iDraft[${i}].규격=this.value;itemsChanged()" onpaste="iPaste(event)"></td>
+    <td><input type="text" value="${esc(it.단위||'')}" placeholder="개" oninput="iDraft[${i}].단위=this.value;itemsChanged()" onpaste="iPaste(event)"></td>
+    <td class="num"><input type="text" inputmode="numeric" value="${it.수량||''}" oninput="iDraft[${i}].수량=Number(this.value.replace(/[^0-9.]/g,''))||0;iTotal()" onpaste="iPaste(event)"></td>
+    <td class="num"><input type="text" inputmode="numeric" value="${it.예상단가?won(it.예상단가):''}" oninput="iDraft[${i}].예상단가=Number(this.value.replace(/[^0-9]/g,''))||0;iTotal()" onblur="this.value=this.value?won(this.value.replace(/[^0-9]/g,'')):''" onpaste="iPaste(event)"></td>
+    <td class="num amt" id="iSum${i}">${won((it.수량||0)*(it.예상단가||0))}</td>
+    <td><input type="text" value="${esc(it.구매처||'')}" oninput="iDraft[${i}].구매처=this.value;itemsChanged()" onpaste="iPaste(event)"></td>
+    <td><button class="btn text danger" title="이 줄 삭제" onclick="iDraft.splice(${i},1);if(!iDraft.length)iDraft.push({});renderItems()">×</button></td></tr>`).join('');
+  iTotal();
+}
+function itemsFilled(){ return iDraft.filter(it=>it.내용||it.수량||it.예상단가); }
+function iTotal(){
+  let t=0; iDraft.forEach((it,i)=>{ const v=(it.수량||0)*(it.예상단가||0); t+=v; const c=$('iSum'+i); if(c) c.textContent=won(v); });
+  $('iTotal').textContent=won(t);
+  const by={}; itemsFilled().forEach(it=>{ const k=it.구매처||'(구매처 없음)'; by[k]=by[k]||{n:0,s:0}; by[k].n++; by[k].s+=(it.수량||0)*(it.예상단가||0); });
+  const ks=Object.keys(by);
+  $('bySup').innerHTML = ks.length>1 ? '구매처별: '+ks.map(k=>`<span>${esc(k)} ${by[k].n}건 ${won(by[k].s)}원</span>`).join('') : '';
+  genBody(); saveDraft();
+}
+function itemsChanged(){ genBody(); }
+function iSelAll(on){ iDraft.forEach(it=>it._sel=on); renderItems(); }
+function deleteItems(mode){
+  if(mode==='all'){ if(!itemsFilled().length) return; if(!confirm('품목을 전부 지울까요?')) return; iDraft=[{}]; }
+  else { const n=iDraft.filter(it=>it._sel).length; if(!n) return toast('삭제할 품목을 체크하세요', true); iDraft=iDraft.filter(it=>!it._sel); if(!iDraft.length) iDraft.push({}); }
+  renderItems();
+}
+function addItemRow(){ iDraft.push({}); renderItems(); const ins=$('iTable').querySelectorAll('tbody tr:last-child input[type=text]'); ins[0]?.focus(); }
+function iPaste(e){
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  if(!/[\t\n]/.test(text)) return;
+  e.preventDefault();
+  const td=e.target.closest('td'), tr=td.closest('tr');
+  const r0=[...tr.parentElement.children].indexOf(tr), c0=[...tr.children].indexOf(td)-1;
+  text.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='').forEach((line,li)=>{
+    const r=r0+li; if(!iDraft[r]) iDraft[r]={};
+    line.split('\t').forEach((cell,ci)=>{ const col=I_COLS[c0+ci]; if(!col) return;
+      iDraft[r][col] = (col==='수량'||col==='예상단가') ? (Number(cell.replace(/[^0-9.]/g,''))||0) : cell.trim(); });
+  });
+  renderItems();
+}
+
+// ───────── 제목 ─────────
+function renderTitles(){
+  $('tSel').innerHTML = '<option value="">제목 고르기</option>' + TITLES.map((t,i)=>`<option value="${i}">${esc(t)}</option>`).join('');
+}
+function substTitle(t){ return t.replace(/\{용도\}/g, $('gUse').value.trim()); }
+function pickTitle(){
+  const i=$('tSel').value; if(i==='') return;
+  const tpl=TITLES[Number(i)]; $('pTitle')._tpl=tpl; $('pTitle').value=substTitle(tpl); $('pTitle')._auto=$('pTitle').value; $('pTitle').focus(); saveDraft();
+}
+function titleTouched(){ $('pTitle')._tpl=null; }
+function saveTitle(){
+  const t=($('pTitle')._tpl || $('pTitle').value).trim(); if(!t) return toast('저장할 제목을 먼저 입력하세요', true);
+  if(TITLES.includes(t)) return toast('이미 저장된 제목입니다', true);
+  TITLES.push(t); if(!store.set('titles', TITLES)) return toast('이 브라우저에서는 저장이 막혀 있어 제목을 남길 수 없습니다', true);
+  renderTitles(); $('tSel').value=String(TITLES.length-1); toast('제목을 저장했습니다');
+}
+function removeTitle(){
+  const i=$('tSel').value; if(i==='') return toast('삭제할 제목을 목록에서 고르세요', true);
+  if(!confirm(`"${TITLES[Number(i)]}" 제목을 목록에서 지울까요?`)) return;
+  TITLES.splice(Number(i),1); store.set('titles', TITLES); renderTitles(); toast('제목을 지웠습니다');
+}
+function useChanged(){
+  const p=$('pTitle'); if(p._tpl && p.value===p._auto){ p.value=substTitle(p._tpl); p._auto=p.value; }
+  genBody();
+}
+
+// ───────── 품의 개요 ─────────
+function renderPhraseSelect(){
+  const sel=$('gPhrase'); const cur=sel.value;
+  sel.innerHTML = PHRASES.map((p,i)=>`<option value="${i}">${esc(p.이름||'(이름 없음)')}</option>`).join('') || '<option value="">문구 없음</option>';
+  if(cur!=='' && PHRASES[Number(cur)]) sel.value=cur;
+}
+function substAll(t){
+  const items=itemsFilled(); const first=items[0]||{};
+  const total=items.reduce((s,it)=>s+(it.수량||0)*(it.예상단가||0),0);
+  const 산출 = first.내용 ? (items.length>1 ? `${first.내용} 외 ${items.length-1}건` : first.내용) : '';
+  const 표 = items.map((it,i)=>`${i+1}. ${it.내용||''}${it.규격?`(${it.규격})`:''} ${it.수량||0}${it.단위||'개'} × ${won(it.예상단가)}원 = ${won((it.수량||0)*(it.예상단가||0))}원`).join('\n');
+  const sups=[...new Set(items.map(it=>(it.구매처||'').trim()).filter(Boolean))].join(', ');
+  return t.replace(/\{용도\}/g, $('gUse').value.trim())
+    .replace(/\{소요예산\}/g, won(total)+'원')
+    .replace(/\{산출내역\}/g, 산출)
+    .replace(/\{품목표\}/g, 표)
+    .replace(/\{구매처\}/g, sups)
+    .replace(/\{단가\}/g, won(first.예상단가||0))
+    .replace(/\{인원\}/g, String(first.수량||0));
+}
+function genBody(force){
+  const ph=PHRASES[Number($('gPhrase').value)]; if(!ph) return;
+  const b=$('gBody');
+  if(!force && b.value && b._auto!==b.value) return;   // 손으로 고친 개요는 덮지 않음
+  b.value=substAll(ph.본문템플릿); b._auto=b.value; saveDraft();
+}
+async function copyText(text, what){
+  if(!text) return toast(`${what}이(가) 비어 있습니다`, true);
+  try{ await navigator.clipboard.writeText(text); toast(`${what}을(를) 복사했습니다`); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast(`${what}을(를) 복사했습니다`); }
+}
+function downloadItemsXlsx(){
+  const items=itemsFilled();
+  if(!items.length) return toast('품목이 없습니다', true);
+  const bad=items.find(it=>!it.내용||!it.수량||!it.예상단가);
+  if(bad) return toast('품목의 내용·수량·예상단가는 모두 입력해야 합니다', true);
+  const rows=[['내용','규격','단위','수량','예상단가'], ...items.map(it=>[it.내용||'', it.규격||'', it.단위||'개', it.수량||0, it.예상단가||0])];
+  const ws=XLSX.utils.aoa_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '품목내역');
+  const name=($('pTitle').value.trim()||'품목내역').replace(/[\\/:*?"<>|]/g,'_').slice(0,40);
+  XLSX.writeFile(wb, `품목내역_${name}.xlsx`);
+}
+
+// ───────── 문구 관리 ─────────
+function phBar(){ return `<div class="ph-bar"><span class="lb">클릭해서 넣기</span>${PH.map(p=>`<button type="button" title="${esc(p[1])}" onmousedown="event.preventDefault()" onclick="insertPh('${p[0]}')">${p[0]}</button>`).join('')}</div>`; }
+function insertPh(text){
+  const box=$('phList');
+  let f = (lastField && box.contains(lastField)) ? lastField : box.querySelector('textarea');
+  if(!f) return toast('먼저 문구를 하나 추가하세요', true);
+  const st=f.selectionStart??f.value.length, en=f.selectionEnd??st;
+  f.setRangeText(text, st, en, 'end'); f.focus(); f.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function openPhrases(){ phraseDraft=PHRASES.map(p=>({...p})); $('phBar').innerHTML=phBar(); renderPhrases(); $('phModal').classList.add('on'); }
+function renderPhrases(){
+  $('phList').innerHTML = phraseDraft.map((p,i)=>`<div class="phrase">
+    <div class="head"><input type="text" value="${esc(p.이름)}" placeholder="문구 이름 (예: 물품)" oninput="phraseDraft[${i}].이름=this.value"><button class="btn text danger" onclick="removePhrase(${i})">삭제</button></div>
+    <textarea oninput="phraseDraft[${i}].본문템플릿=this.value">${esc(p.본문템플릿)}</textarea></div>`).join('') || '<div class="empty">문구가 없습니다. [문구 추가]를 누르세요.</div>';
+}
+function addPhrase(){ phraseDraft.push({이름:'', 본문템플릿:''}); renderPhrases(); const ins=$('phList').querySelectorAll('input'); ins[ins.length-1]?.focus(); }
+function removePhrase(i){ if(!confirm('이 문구를 지울까요?')) return; phraseDraft.splice(i,1); renderPhrases(); }
+function restorePhrases(){ if(!confirm('기본 문구(물품·업추비)를 목록에 다시 넣을까요? 직접 만든 문구는 그대로 남습니다.')) return; DEFAULT_PHRASES.forEach(d=>{ if(!phraseDraft.some(p=>p.이름===d.이름)) phraseDraft.push({...d}); }); renderPhrases(); }
+function savePhrases(){
+  const list=phraseDraft.map(p=>({이름:p.이름.trim(), 본문템플릿:p.본문템플릿.trim()})).filter(p=>p.이름&&p.본문템플릿);
+  if(!list.length) return toast('문구가 하나도 없습니다. 이름과 내용을 채우세요', true);
+  PHRASES=list; if(!store.set('phrases', PHRASES)) toast('이 브라우저에서는 저장이 막혀 있어 다음에 열면 기본 문구로 돌아갑니다', true); else toast('문구를 저장했습니다');
+  renderPhraseSelect(); $('phModal').classList.remove('on'); genBody(true);
+}
+
+// ───────── 견적서 가져오기 ─────────
+async function importFiles(files){
+  const list=[...files]; if(!list.length) return;
+  busy(true); const groups=[], errs=[];
+  for(const f of list){   // 배송비가 잡힌 파일은 '배송비도 품목에 추가'를 기본으로 켜 둔다
+    try{ const p=await parseFile(f); if(!p.items.length) throw new Error('품목을 찾지 못했습니다'); groups.push({fname:f.name, 출처:p.출처, items:p.items.map(x=>({...x,선택:true})), ship:p.ship||0, shipNote:p.shipNote||'', addShip:!!p.ship}); }
+    catch(e){ errs.push(`${f.name}: ${e.message}`); }
+  }
+  busy(false);
+  errs.forEach(m=>toast('읽기 실패 — '+m, true));
+  if(groups.length) openQuote(groups);
+}
+function openQuote(groups){
+  qGroups=groups;
+  const n=groups.reduce((s,g)=>s+g.items.length,0), mis=groups.some(g=>g.items.some(x=>x._mismatch));
+  $('qmInfo').textContent=`파일 ${groups.length}개 · 품목 ${n}건. 내용을 고친 뒤 [품목에 추가]를 누르세요.` + (mis?' 노란 줄은 합계가 수량으로 나누어떨어지지 않아 단가를 반올림한 항목입니다.':'');
+  $('qmReplace').checked = !itemsFilled().length;
+  $('qmTable').querySelector('tbody').innerHTML = groups.map((g,gi)=>`<tr class="grp"><td colspan="7">
+      <b>${esc(g.출처)}</b> · ${esc(g.fname)} · ${g.items.length}건
+      ${g.ship?`<label class="row" style="display:inline-flex;gap:6px;margin-left:12px;cursor:pointer;font-weight:400"><input type="checkbox" ${g.addShip?'checked':''} onchange="qGroups[${gi}].addShip=this.checked"> 배송비 ${won(g.ship)}원도 품목에 추가</label>`:''}
+      ${g.shipNote?`<span class="hint" style="display:inline;margin-left:8px">${esc(g.shipNote)}</span>`:''}</td></tr>`
+    + g.items.map((q,i)=>`<tr ${q._mismatch?'class="warn"':''}>
+      <td><input type="checkbox" checked onchange="qGroups[${gi}].items[${i}].선택=this.checked"></td>
+      <td><input type="text" value="${esc(q.내용)}" oninput="qGroups[${gi}].items[${i}].내용=this.value"></td>
+      <td><input type="text" value="${esc(q.규격)}" oninput="qGroups[${gi}].items[${i}].규격=this.value"></td>
+      <td><input type="text" value="${esc(q.단위)}" oninput="qGroups[${gi}].items[${i}].단위=this.value"></td>
+      <td class="num"><input type="text" value="${q.수량}" oninput="qGroups[${gi}].items[${i}].수량=numOf(this.value)"></td>
+      <td class="num"><input type="text" value="${won(q.예상단가)}" oninput="qGroups[${gi}].items[${i}].예상단가=numOf(this.value)" onblur="this.value=won(numOf(this.value))"></td>
+      <td><input type="text" value="${esc(q.구매처)}" oninput="qGroups[${gi}].items[${i}].구매처=this.value"></td></tr>`).join('')).join('');
+  $('qModal').classList.add('on');
+}
+function applyQuote(){
+  const add=[];
+  qGroups.forEach(g=>{
+    g.items.filter(q=>q.선택).forEach(q=>add.push({내용:q.내용,규격:q.규격,단위:q.단위,수량:q.수량,예상단가:q.예상단가,구매처:q.구매처,출처:q.출처}));
+    if(g.addShip && g.ship) add.push({내용:'배송비',규격:'',단위:'건',수량:1,예상단가:g.ship,구매처:g.items[0]?g.items[0].구매처:g.출처,출처:g.출처});
+  });
+  if(!add.length) return toast('추가할 품목을 체크하세요', true);
+  iDraft = $('qmReplace').checked ? add : itemsFilled().concat(add);
+  renderItems(); $('qModal').classList.remove('on'); toast(`${add.length}건을 품목에 넣었습니다`);
+  genBody(true);
+}
+
+// ───────── 파일 형식 판별 ─────────
+async function parseFile(f){
+  const buf=await f.arrayBuffer(); const head=new Uint8Array(buf.slice(0,4));
+  if(head[0]===0x25&&head[1]===0x50&&head[2]===0x44&&head[3]===0x46) return parsePdf(buf);        // %PDF
+  if((head[0]===0x50&&head[1]===0x4B)||(head[0]===0xD0&&head[1]===0xCF)) return parseSheet(buf, f.name);  // xlsx(zip) / 진짜 xls
+  let text; try{ text=new TextDecoder('utf-8',{fatal:true}).decode(buf); }catch(e){ text=new TextDecoder('euc-kr').decode(buf); }
+  if(text.includes('공급합계')) return parseGmarket(text);
+  if(text.includes('할인적용금액')) return parseIscream(text);
+  if(text.includes('xans-estimate')||text.includes('아람과학사')) return parseAram(text);
+  throw new Error('지원하는 견적서 형식이 아닙니다 (지마켓·아이스크림몰·학교장터·아람과학사·이마트몰·yes24·키드키즈몰)');
+}
+
+// @@PARSERS-START (아래 함수들은 브라우저 밖에서도 시험할 수 있도록 화면 요소를 건드리지 않는다)
+function htmlTables(text){ const doc=new DOMParser().parseFromString(text,'text/html'); return [...doc.querySelectorAll('table')]; }
+function cellsOf(tr){ return [...tr.querySelectorAll('th,td')].map(td=>td.textContent.replace(/\s+/g,' ').trim()); }
+function findCol(header, keys){ for(const k of keys){ const i=header.findIndex(h=>h.includes(k)); if(i>=0) return i; } return -1; }
+
+// 지마켓: .xls 이름의 HTML, '공급합계' 표
+function parseGmarket(text){
+  const t = htmlTables(text).find(tb=>tb.textContent.includes('공급합계'));
+  if(!t) throw new Error('지마켓 표를 찾지 못했습니다');
+  const trs=[...t.querySelectorAll('tr')]; const hi=trs.findIndex(tr=>cellsOf(tr).some(c=>c.includes('공급합계')));
+  const H=cellsOf(trs[hi]);
+  const cNo=findCol(H,['번호']), cName=findCol(H,['상품명']), cSup=findCol(H,['공급자']), cQty=findCol(H,['수량']), cTot=findCol(H,['공급합계']);
+  const items=[]; let last=null;
+  const m = text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').match(/배송비\s*[:：]?\s*([\d,]+)\s*원/); const ship = m?numOf(m[1]):0;
+  trs.slice(hi+1).forEach(tr=>{ const c=cellsOf(tr); const joined=c.join(' ');
+    if(/^합계/.test(joined)) return;
+    if(c.length<=cTot){ if(last && c[0]) last.규격 = (last.규격?last.규격+' ':'')+c[0]; return; }   // 칸이 적은 줄 = 옵션(필수선택/추가구성)
+    const no=c[cNo], name=c[cName]; if(!name) return;
+    if(last && no===last.no){ last.규격 = (last.규격?last.규격+' ':'')+name; return; }
+    const qty=numOf(c[cQty])||1, tot=numOf(c[cTot]);
+    last={no, 내용:name, 규격:'', 단위:'개', 수량:qty, 예상단가:Math.round(tot/qty), 구매처:c[cSup]||'지마켓', 출처:'지마켓', _mismatch: tot%qty!==0};
+    items.push(last);
+  });
+  return {items, ship, 출처:'지마켓'};
+}
+// 아이스크림몰: .xls 이름의 HTML, '할인적용금액' 표
+function parseIscream(text){
+  const t = htmlTables(text).find(tb=>tb.textContent.includes('할인적용금액'));
+  if(!t) throw new Error('아이스크림몰 표를 찾지 못했습니다');
+  const trs=[...t.querySelectorAll('tr')]; const hi=trs.findIndex(tr=>cellsOf(tr).some(c=>c.includes('할인적용금액')));
+  const H=cellsOf(trs[hi]);
+  const cSel=findCol(H,['판매자']), cName=findCol(H,['상품명']), cPrice=findCol(H,['할인적용금액']), cQty=findCol(H,['수량']), cShip=findCol(H,['배송비']);
+  const items=[]; let ship=0;
+  trs.slice(hi+1).forEach(tr=>{ const c=cellsOf(tr); if(c.length<=cQty) return; let name=c[cName]; if(!name) return;
+    let spec=''; const m=name.match(/^(.*?)\s*\[\d+\]\s*(.*)$/); if(m){ name=m[1].trim(); spec=m[2].replace(/^단일상품\s*:\s*단일상품$/,'').trim(); }
+    items.push({내용:name, 규격:spec, 단위:'개', 수량:numOf(c[cQty])||1, 예상단가:numOf(c[cPrice]), 구매처:c[cSel]||'아이스크림몰', 출처:'아이스크림몰'});
+    if(cShip>=0) ship = Math.max(ship, numOf(c[cShip]));
+  });
+  return {items, ship, 출처:'아이스크림몰'};
+}
+// 아람과학사: .xls 이름의 HTML(카페24 견적서), 'No. 품명 규격 수량 단가 금액' 표
+function parseAram(text){
+  const tables=htmlTables(text);
+  let t=null, hi=-1, trs=[];
+  for(const tb of tables){ trs=[...tb.querySelectorAll('tr')]; hi=trs.findIndex(tr=>{ const c=cellsOf(tr); return c.includes('품명')&&c.includes('수량')&&c.some(v=>v.includes('단가')); }); if(hi>=0){ t=tb; break; } }
+  if(!t) throw new Error('아람과학사 견적서 표를 찾지 못했습니다');
+  const H=cellsOf(trs[hi]);
+  const cName=findCol(H,['품명']), cSpec=findCol(H,['규격']), cQty=findCol(H,['수량']), cPrice=findCol(H,['단가']), cAmt=findCol(H,['금액']);
+  const items=[];
+  for(const tr of trs.slice(hi+1)){ const c=cellsOf(tr);
+    if(c.length<=Math.max(cQty,cPrice)){ if(/이\s*하\s*여\s*백|합\s*계/.test(c.join(' '))) break; continue; }
+    const name=c[cName]; if(!name) continue;
+    const qty=numOf(c[cQty])||1; let price=numOf(c[cPrice]); const amt=cAmt>=0?numOf(c[cAmt]):0;
+    if(!price && amt) price=Math.round(amt/qty);
+    items.push({내용:name, 규격:cSpec>=0?c[cSpec]:'', 단위:'개', 수량:qty, 예상단가:price, 구매처:'아람과학사', 출처:'아람과학사'});
+  }
+  // "50,000원 미만 구입시 배송비 4,000원" 규칙: 합계가 기준 미만이면 배송비를 붙일 수 있게 한다
+  let ship=0, shipNote='';
+  const plain=text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+  const m=plain.match(/([\d,]+)\s*원\s*미만[^.]*?배송비\s*([\d,]+)\s*원/);
+  if(m){ const th=numOf(m[1]), fee=numOf(m[2]); const total=items.reduce((s,i)=>s+i.수량*i.예상단가,0);
+    if(total<th){ ship=fee; shipNote=`(${won(th)}원 미만 주문은 배송비 ${won(fee)}원 부담)`; } }
+  return {items, ship, shipNote, 출처:'아람과학사'};
+}
+// 엑셀 계열(학교장터 xlsx/xls, yes24 견적서 xlsx, 키드키즈몰 xls, 에듀파인 품목내역 양식 xlsx): 시트마다 머리글을 보고 판별
+function parseSheet(buf, fname){
+  const wb=XLSX.read(buf,{type:'array'});
+  for(const sn of wb.SheetNames){
+    const A=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''}).map(r=>r.map(v=>String(v).trim()));
+    const hi=A.findIndex(r=>r.some(v=>v==='서명')&&r.some(v=>v==='ISBN')&&r.some(v=>v.includes('공급단가')));
+    if(hi>=0) return parseYes24Rows(A, hi);
+    const hf=A.findIndex(r=>r.some(v=>v==='내용')&&r.some(v=>v==='수량')&&r.some(v=>v.includes('예상단가')));
+    if(hf>=0) return parseItemFormRows(A, hf, fname);
+    const hs=A.findIndex(r=>r.some(v=>v.includes('물품'))&&r.some(v=>v==='수량')&&r.some(v=>v.includes('단가')));
+    if(hs>=0) return parseS2BRows(A, hs);
+    const hk=A.findIndex(r=>r.some(v=>v==='품명')&&r.some(v=>v==='수량')&&r.some(v=>v==='단가'));
+    if(hk>=0) return parseKidkidsRows(A, hk);
+  }
+  throw new Error('학교장터·yes24·키드키즈몰·에듀파인 품목내역 양식 중 어느 것도 아닙니다');
+}
+// 키드키즈몰 견적서(진짜 xls): 품명 규격 수량 단위 단가 — 품명 끝의 "선택 : 옵션"은 규격으로 옮긴다
+function parseKidkidsRows(A, hi){
+  const H=A[hi];
+  const cName=H.indexOf('품명'), cSpec=H.indexOf('규격'), cQty=H.indexOf('수량'), cUnit=H.indexOf('단위'), cPrice=H.indexOf('단가');
+  const items=[];
+  for(let i=hi+1;i<A.length;i++){ const r=A[i]; let name=r[cName]; if(!name) continue;
+    if(/^(합\s*계|총\s*계|소\s*계)/.test(name)) break;
+    let spec=cSpec>=0?r[cSpec]:'';
+    const m=name.match(/^(.*\S)\s+:\s+(\S.*)$/);          // "… 색상 선택 : 핑크", "… 엽서물감색칠 : 아름핑"
+    if(m){ let base=m[1], opt=m[2];
+      const lm=base.match(/\s*(색상|옵션|종류|사이즈|구성|타입)?\s*선택$/);   // 이름 끝의 "선택"·"색상 선택"은 떼어 옵션 앞에 붙인다
+      if(lm){ base=base.slice(0,lm.index).trim(); if(lm[1]) opt=`${lm[1]}: ${opt}`; }
+      if(base){ name=base; spec=[spec,opt].filter(Boolean).join(' '); } }
+    items.push({내용:name, 규격:spec, 단위:(cUnit>=0&&r[cUnit])||'개', 수량:numOf(r[cQty])||1, 예상단가:numOf(r[cPrice]), 구매처:'키드키즈몰', 출처:'키드키즈몰'});
+  }
+  return {items, ship:0, 출처:'키드키즈몰'};
+}
+// yes24 견적서: NO. 유형 서명 출판사 ISBN 수량 정가 정가총액 공급단가 공급총액 링크
+function parseYes24Rows(A, hi){
+  const H=A[hi];
+  const cType=H.indexOf('유형'), cName=H.indexOf('서명'), cPub=H.indexOf('출판사'), cQty=H.indexOf('수량'), cPrice=H.findIndex(v=>v.includes('공급단가'));
+  const items=[];
+  for(let i=hi+1;i<A.length;i++){ const r=A[i];
+    if(r.some(v=>v.includes('합계금액'))) break;
+    const name=r[cName]; if(!name) continue;
+    const type=cType>=0?r[cType]:'';
+    items.push({내용:name, 규격:cPub>=0?r[cPub]:'', 단위:(!type||type==='도서')?'권':'개', 수량:numOf(r[cQty])||1, 예상단가:numOf(r[cPrice]), 구매처:'yes24', 출처:'yes24'});
+  }
+  return {items, ship:0, 출처:'yes24'};
+}
+// 에듀파인 품목내역 양식: 내용 규격 (단위) 수량 예상단가 — yes24의 '에듀파인 견적 양식'도 이 형식
+function parseItemFormRows(A, hi, fname){
+  const H=A[hi];
+  const cName=H.indexOf('내용'), cSpec=H.indexOf('규격'), cUnit=H.indexOf('단위'), cQty=H.indexOf('수량'), cPrice=H.findIndex(v=>v.includes('예상단가'));
+  const sup=/yes24/i.test(fname||'')?'yes24':'';
+  const items=[];
+  for(let i=hi+1;i<A.length;i++){ const r=A[i]; const name=r[cName]; if(!name) continue;
+    items.push({내용:name, 규격:cSpec>=0?r[cSpec]:'', 단위:(cUnit>=0&&r[cUnit])?r[cUnit]:(/^\[도서\]/.test(name)?'권':'개'), 수량:numOf(r[cQty])||1, 예상단가:numOf(r[cPrice]), 구매처:sup, 출처:'품목내역 양식'});
+  }
+  return {items, ship:0, 출처: sup?'yes24(에듀파인 양식)':'품목내역 양식'};
+}
+// 학교장터(S2B) 견적서
+function parseS2BRows(A, hi){
+  const H=A[hi]; const cName=H.findIndex(v=>v.includes('물품')), cQty=H.indexOf('수량'), cPrice=H.findIndex(v=>v.includes('단가')), cUnit=H.findIndex(v=>v.includes('단위'));
+  let sup=''; A.forEach(r=>{ const i=r.findIndex(v=>/상호/.test(v)); if(i>=0 && !sup){ sup = r.slice(i+1).find(v=>v) || r[i].replace(/.*상호\S*\s*/,''); } });
+  const items=[]; let ship=0;
+  for(let i=hi+1;i<A.length;i++){ const r=A[i]; const joined=r.join(' ');
+    if(/합계/.test(joined) && !r[cName]) break;
+    if(/배송비/.test(joined)){ const n=r.map(numOf).filter(Boolean); if(n.length) ship=n[n.length-1]; continue; }
+    const name=r[cName]; if(!name || !numOf(r[cQty])) continue;
+    const parts=name.split(/\s*[•·]\s*/); let unit = cUnit>=0 ? r[cUnit] : '';
+    if(!unit){ const nx=A[i+1]||[]; const cand=nx.filter(v=>v&&!numOf(v)); if(nx.length && cand.length===1 && cand[0].length<=4 && !numOf(nx[cQty])) { unit=cand[0]; } }
+    items.push({내용:parts[0], 규격:parts.slice(1).join(' '), 단위:unit||'개', 수량:numOf(r[cQty]), 예상단가:numOf(r[cPrice]), 구매처:sup||'학교장터', 출처:'학교장터'});
+  }
+  return {items, ship, 출처:'학교장터'};
+}
+// 이마트몰(SSG) 견적서 PDF: 글자 위치(x, y)로 표를 다시 조립한다
+// pages = [[{s:글자, x, y, w}], ...]  (y는 위로 갈수록 큼)
+function parseSsg(pages){
+  const items=[]; let ship=0, found=false;
+  pages.forEach(T=>{
+    const hdr=T.find(t=>t.s.startsWith('상품명')); if(!hdr) return;
+    const same=y=>T.filter(t=>Math.abs(t.y-y)<3);
+    const hQty=same(hdr.y).find(t=>t.s==='수량'); if(!hQty) return;
+    found=true;
+    const xCut=hQty.x-10;                                   // 이보다 왼쪽은 상품명 칸, 오른쪽은 숫자 칸
+    const foot=T.find(t=>t.s==='합계' && t.y<hdr.y-2 && t.x<xCut);
+    const yTop=hdr.y-2, yBot=foot?foot.y+2:20;
+    const body=T.filter(t=>t.y<yTop && t.y>yBot);
+    const rows=[];                                          // 숫자 줄(수량·공급가액·할인금액·공급합계)
+    body.filter(t=>t.x>=xCut).sort((a,b)=>b.y-a.y).forEach(t=>{ const r=rows.find(r=>Math.abs(r.y-t.y)<4); if(r) r.c.push(t); else rows.push({y:t.y,c:[t],names:[]}); });
+    const lines=[];                                         // 상품명 줄
+    body.filter(t=>t.x<xCut).sort((a,b)=>b.y-a.y).forEach(t=>{ const l=lines.find(l=>Math.abs(l.y-t.y)<3); if(l) l.t.push(t); else lines.push({y:t.y,t:[t]}); });
+    lines.forEach(l=>{ let best=null; rows.forEach(r=>{ if(!best || Math.abs(r.y-l.y)<Math.abs(best.y-l.y)) best=r; }); if(best && Math.abs(best.y-l.y)<30) best.names.push(l); });
+    rows.forEach(r=>{
+      const nums=r.c.sort((a,b)=>a.x-b.x).map(t=>numOf(t.s)); if(nums.length<2) return;
+      const qty=nums[0]||1, tot=nums[nums.length-1];
+      const name=r.names.sort((a,b)=>b.y-a.y).map(l=>l.t.sort((a,b)=>a.x-b.x).map(t=>t.s).join(' ')).join(' ').replace(/\s+/g,' ').trim();
+      if(!name) return;
+      items.push({내용:name, 규격:'', 단위:'개', 수량:qty, 예상단가:Math.round(tot/qty), 구매처:'이마트몰', 출처:'이마트몰', _mismatch: tot%qty!==0});
+    });
+    const sh=T.find(t=>t.s==='배송비' && t.y<yTop && t.x<xCut);
+    if(sh){ const n=same(sh.y).filter(t=>t!==sh).map(t=>numOf(t.s)).filter(Boolean); if(n.length) ship=Math.max(ship, n[n.length-1]); }
+  });
+  if(!found) throw new Error('이마트몰 견적서 PDF 형식이 아닙니다');
+  return {items, ship, 출처:'이마트몰'};
+}
+// @@PARSERS-END
+
+// PDF는 필요할 때만 pdf.js를 불러온다
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function loadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector(`script[src="${src}"]`)) return res(); const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('PDF 읽기 모듈을 불러오지 못했습니다. 인터넷 연결을 확인하세요')); document.head.appendChild(s); }); }
+async function parsePdf(buf){
+  if(!window.pdfjsLib){ await loadScript(PDFJS+'pdf.min.js'); window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; }
+  const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  const pages=[];
+  for(let p=1;p<=doc.numPages;p++){
+    const tc=await (await doc.getPage(p)).getTextContent();
+    pages.push(tc.items.filter(t=>typeof t.str==='string' && t.str.trim()).map(t=>({s:t.str.trim(), x:t.transform[4], y:t.transform[5], w:t.width})));
+  }
+  const all=pages.flat().map(t=>t.s).join(' ');
+  if(all.includes('공급 합계') && (/ssg|에스에스지|이마트/i.test(all))) return parseSsg(pages);
+  throw new Error('PDF는 이마트몰 견적서만 읽을 수 있습니다');
+}
+
+init();
+</script>
+</body>
+</html>
