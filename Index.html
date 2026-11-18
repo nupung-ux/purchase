@@ -123,7 +123,7 @@
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="견적서 파일 선택">
       <div class="t">견적서 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
       <div class="s">여러 파일을 한 번에 넣을 수 있고, 넣을 때마다 아래 표에 더해집니다</div>
-      <div class="malls"><span>지마켓</span><span>아이스크림몰</span><span>학교장터(S2B)</span><span>아람과학사</span><span>이마트몰</span><span>yes24</span><span>에듀파인 품목내역 양식(xlsx)</span></div>
+      <div class="malls"><span>지마켓</span><span>아이스크림몰</span><span>학교장터(S2B)</span><span>아람과학사</span><span>이마트몰</span><span>yes24</span><span>키드키즈몰</span><span>에듀파인 품목내역 양식(xlsx)</span></div>
     </div>
     <input type="file" id="qFile" multiple accept=".xls,.xlsx,.htm,.html,.pdf" style="display:none">
     <details class="how">
@@ -133,6 +133,7 @@
         <li>학교장터(S2B): 견적서를 엑셀(.xlsx)로 받은 파일</li>
         <li>yes24: 견적서 엑셀(.xlsx) 또는 에듀파인 견적 양식(.xlsx), 둘 다 됩니다</li>
         <li>이마트몰: 장바구니 견적서 화면을 인쇄 → PDF로 저장한 파일(.pdf)</li>
+        <li>키드키즈몰: 견적서로 내려받은 엑셀 파일(.xls)</li>
         <li>그 밖의 쇼핑몰: 아래 표에 직접 입력하거나, 엑셀에 정리한 뒤 복사해서 표에 붙여넣으세요(내용·규격·단위·수량·예상단가·구매처 순)</li>
       </ul>
     </details>
@@ -488,7 +489,7 @@ async function parseFile(f){
   if(text.includes('공급합계')) return parseGmarket(text);
   if(text.includes('할인적용금액')) return parseIscream(text);
   if(text.includes('xans-estimate')||text.includes('아람과학사')) return parseAram(text);
-  throw new Error('지원하는 견적서 형식이 아닙니다 (지마켓·아이스크림몰·학교장터·아람과학사·이마트몰·yes24)');
+  throw new Error('지원하는 견적서 형식이 아닙니다 (지마켓·아이스크림몰·학교장터·아람과학사·이마트몰·yes24·키드키즈몰)');
 }
 
 // @@PARSERS-START (아래 함수들은 브라우저 밖에서도 시험할 수 있도록 화면 요소를 건드리지 않는다)
@@ -555,7 +556,7 @@ function parseAram(text){
     if(total<th){ ship=fee; shipNote=`(${won(th)}원 미만 주문은 배송비 ${won(fee)}원 부담)`; } }
   return {items, ship, shipNote, 출처:'아람과학사'};
 }
-// 엑셀 계열(학교장터 xlsx/xls, yes24 견적서 xlsx, 에듀파인 품목내역 양식 xlsx): 시트마다 머리글을 보고 판별
+// 엑셀 계열(학교장터 xlsx/xls, yes24 견적서 xlsx, 키드키즈몰 xls, 에듀파인 품목내역 양식 xlsx): 시트마다 머리글을 보고 판별
 function parseSheet(buf, fname){
   const wb=XLSX.read(buf,{type:'array'});
   for(const sn of wb.SheetNames){
@@ -566,8 +567,27 @@ function parseSheet(buf, fname){
     if(hf>=0) return parseItemFormRows(A, hf, fname);
     const hs=A.findIndex(r=>r.some(v=>v.includes('물품'))&&r.some(v=>v==='수량')&&r.some(v=>v.includes('단가')));
     if(hs>=0) return parseS2BRows(A, hs);
+    const hk=A.findIndex(r=>r.some(v=>v==='품명')&&r.some(v=>v==='수량')&&r.some(v=>v==='단가'));
+    if(hk>=0) return parseKidkidsRows(A, hk);
   }
-  throw new Error('학교장터·yes24·에듀파인 품목내역 양식 중 어느 것도 아닙니다');
+  throw new Error('학교장터·yes24·키드키즈몰·에듀파인 품목내역 양식 중 어느 것도 아닙니다');
+}
+// 키드키즈몰 견적서(진짜 xls): 품명 규격 수량 단위 단가 — 품명 끝의 "선택 : 옵션"은 규격으로 옮긴다
+function parseKidkidsRows(A, hi){
+  const H=A[hi];
+  const cName=H.indexOf('품명'), cSpec=H.indexOf('규격'), cQty=H.indexOf('수량'), cUnit=H.indexOf('단위'), cPrice=H.indexOf('단가');
+  const items=[];
+  for(let i=hi+1;i<A.length;i++){ const r=A[i]; let name=r[cName]; if(!name) continue;
+    if(/^(합\s*계|총\s*계|소\s*계)/.test(name)) break;
+    let spec=cSpec>=0?r[cSpec]:'';
+    const m=name.match(/^(.*\S)\s+:\s+(\S.*)$/);          // "… 색상 선택 : 핑크", "… 엽서물감색칠 : 아름핑"
+    if(m){ let base=m[1], opt=m[2];
+      const lm=base.match(/\s*(색상|옵션|종류|사이즈|구성|타입)?\s*선택$/);   // 이름 끝의 "선택"·"색상 선택"은 떼어 옵션 앞에 붙인다
+      if(lm){ base=base.slice(0,lm.index).trim(); if(lm[1]) opt=`${lm[1]}: ${opt}`; }
+      if(base){ name=base; spec=[spec,opt].filter(Boolean).join(' '); } }
+    items.push({내용:name, 규격:spec, 단위:(cUnit>=0&&r[cUnit])||'개', 수량:numOf(r[cQty])||1, 예상단가:numOf(r[cPrice]), 구매처:'키드키즈몰', 출처:'키드키즈몰'});
+  }
+  return {items, ship:0, 출처:'키드키즈몰'};
 }
 // yes24 견적서: NO. 유형 서명 출판사 ISBN 수량 정가 정가총액 공급단가 공급총액 링크
 function parseYes24Rows(A, hi){
